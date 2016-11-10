@@ -2,6 +2,8 @@
 
 namespace Cmgmyr\Messenger\Models;
 
+use App\User;
+
 class Models
 {
     /**
@@ -17,13 +19,6 @@ class Models
      * @var array
      */
     protected static $tables = [];
-
-    /**
-     * Internal pointer name for the app's "user" model.
-     *
-     * @var string
-     */
-    private static $userModelLookupKey = 'User';
 
     /**
      * Set the model to be used for threads.
@@ -65,7 +60,7 @@ class Models
      */
     public static function setUserModel($model)
     {
-        static::$models[self::$userModelLookupKey] = $model;
+        static::$models[User::class] = $model;
     }
 
     /**
@@ -150,7 +145,7 @@ class Models
      */
     public static function user(array $attributes = [])
     {
-        return static::make(self::$userModelLookupKey, $attributes);
+        return static::make(User::class, $attributes);
     }
 
     /**

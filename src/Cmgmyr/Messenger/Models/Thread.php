@@ -6,11 +6,14 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Cviebrock\EloquentSluggable\SluggableScopeHelpers;
+use Cviebrock\EloquentSluggable\Sluggable;
 
 class Thread extends Eloquent
 {
     use SoftDeletes;
-
+    use Sluggable;
+    use SluggableScopeHelpers;
     /**
      * The database table used by the model.
      *
@@ -18,12 +21,14 @@ class Thread extends Eloquent
      */
     protected $table = 'threads';
 
+    protected $fillable = ['subject','group_id','description','link_preview_id','owner_id'];
+
     /**
      * The attributes that can be set with Mass Assignment.
      *
      * @var array
      */
-    protected $fillable = ['subject'];
+    //protected $fillable = [''];
 
     /**
      * The attributes that should be mutated to dates.
@@ -82,6 +87,29 @@ class Thread extends Eloquent
         return $this->messages()->oldest()->first()->user;
     }
 
+    public function linkPreview()
+    {
+        return $this->belongsTo('App\Models\LinkPreview');
+    }
+
+    public function group()
+    {
+        return $this->belongsTo('App\Models\Group');
+    }
+
+    /**
+     * Returns the user object that created the thread.
+     *
+     * @return mixed
+     */
+    public function creatorThread()
+    {
+        $creator = array();
+        $creator['id'] = $this->user['id'];
+        $creator['name'] = $this->user['first_name'].' '.$this->user['last_name'];
+        return $creator;
+    }
+
     /**
      * Returns all of the latest threads by updated_at date.
      *
@@ -90,6 +118,16 @@ class Thread extends Eloquent
     public static function getAllLatest()
     {
         return self::latest('updated_at');
+    }
+
+    /**
+     * Returns all messages from a thread.
+     *
+     * @return \Cmgmyr\Messenger\Models\Message
+     */
+    public function getMessages()
+    {
+        return $this->messages()->latest()->get();
     }
 
     /**
@@ -111,15 +149,13 @@ class Thread extends Eloquent
      */
     public function participantsUserIds($userId = null)
     {
-        $users = $this->participants()->withTrashed()->select('user_id')->get()->map(function ($participant) {
-            return $participant->user_id;
-        });
+        $users = $this->participants()->withTrashed()->lists('user_id');
 
         if ($userId) {
-            $users->push($userId);
+            $users[] = $userId;
         }
 
-        return $users->toArray();
+        return $users;
     }
 
     /**
@@ -182,32 +218,20 @@ class Thread extends Eloquent
     }
 
     /**
-     * Add users to thread as participants.
+     * Adds users to this thread.
      *
-     * @param array|mixed $userId
+     * @param array $participants list of all participants
      */
-    public function addParticipant($userId)
+    public function addParticipants(array $participants)
     {
-        $userIds = is_array($userId) ? $userId : (array) func_get_args();
-
-        collect($userIds)->each(function ($userId) {
-            Models::participant()->firstOrCreate([
-                'user_id' => $userId,
-                'thread_id' => $this->id,
-            ]);
-        });
-    }
-
-    /**
-     * Remove participants from thread.
-     *
-     * @param array|mixed $userId
-     */
-    public function removeParticipant($userId)
-    {
-        $userIds = is_array($userId) ? $userId : (array) func_get_args();
-
-        Models::participant()->where('thread_id', $this->id)->whereIn('user_id', $userIds)->delete();
+        if (count($participants)) {
+            foreach ($participants as $user_id) {
+                Models::participant()->firstOrCreate([
+                    'user_id' => $user_id,
+                    'thread_id' => $this->id,
+                ]);
+            }
+        }
     }
 
     /**
@@ -237,8 +261,7 @@ class Thread extends Eloquent
     {
         try {
             $participant = $this->getParticipantFromUser($userId);
-
-            if ($participant->last_read === null || $this->updated_at->gt($participant->last_read)) {
+            if ($this->updated_at > $participant->last_read) {
                 return true;
             }
         } catch (ModelNotFoundException $e) {
@@ -255,7 +278,7 @@ class Thread extends Eloquent
      *
      * @return mixed
      *
-     * @throws ModelNotFoundException
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
     public function getParticipantFromUser($userId)
     {
@@ -285,20 +308,21 @@ class Thread extends Eloquent
     {
         $participantsTable = Models::table('participants');
         $usersTable = Models::table('users');
-        $userPrimaryKey = Models::user()->getKeyName();
 
         $selectString = $this->createSelectString($columns);
 
         $participantNames = $this->getConnection()->table($usersTable)
-            ->join($participantsTable, $usersTable . '.' . $userPrimaryKey, '=', $participantsTable . '.user_id')
+            ->join($participantsTable, $usersTable . '.id', '=', $participantsTable . '.user_id')
             ->where($participantsTable . '.thread_id', $this->id)
             ->select($this->getConnection()->raw($selectString));
 
         if ($userId !== null) {
-            $participantNames->where($usersTable . '.' . $userPrimaryKey, '!=', $userId);
+            $participantNames->where($usersTable . '.id', '!=', $userId);
         }
 
-        return $participantNames->implode('name', ', ');
+        $userNames = $participantNames->lists($usersTable . '.name');
+
+        return implode(', ', $userNames);
     }
 
     /**
@@ -358,20 +382,25 @@ class Thread extends Eloquent
     public function userUnreadMessages($userId)
     {
         $messages = $this->messages()->get();
-
-        try {
-            $participant = $this->getParticipantFromUser($userId);
-        } catch (ModelNotFoundException $e) {
+        $participant = $this->getParticipantFromUser($userId);
+        if (!$participant) {
             return collect();
         }
-
         if (!$participant->last_read) {
-            return $messages;
+            return collect($messages);
+        }
+        $unread = [];
+        $i = count($messages) - 1;
+        while ($i) {
+            if ($messages[$i]->updated_at->gt($participant->last_read)) {
+                array_push($unread, $messages[$i]);
+            } else {
+                break;
+            }
+            --$i;
         }
 
-        return $messages->filter(function ($message) use ($participant) {
-            return $message->updated_at->gt($participant->last_read);
-        });
+        return collect($unread);
     }
 
     /**
@@ -385,4 +414,19 @@ class Thread extends Eloquent
     {
         return $this->userUnreadMessages($userId)->count();
     }
+
+    /**
+     * Return the sluggable configuration array for this model.
+     *
+     * @return array
+     */
+    public function sluggable()
+    {
+        return [
+            'slug' => [
+                'source' => 'subject'
+            ]
+        ];
+    }
+
 }

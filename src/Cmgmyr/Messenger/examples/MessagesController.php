@@ -110,7 +110,7 @@ class MessagesController extends Controller
 
         // Recipients
         if (Input::has('recipients')) {
-            $thread->addParticipant($input['recipients']);
+            $thread->addParticipants($input['recipients']);
         }
 
         return redirect('messages');
@@ -155,7 +155,7 @@ class MessagesController extends Controller
 
         // Recipients
         if (Input::has('recipients')) {
-            $thread->addParticipant(Input::get('recipients'));
+            $thread->addParticipants(Input::get('recipients'));
         }
 
         return redirect('messages/' . $id);

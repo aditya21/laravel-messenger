@@ -2,6 +2,7 @@
 
 namespace Cmgmyr\Messenger\Models;
 
+use App\User;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 
 class Message extends Eloquent
@@ -63,7 +64,7 @@ class Message extends Eloquent
      */
     public function user()
     {
-        return $this->belongsTo(Models::user(), 'user_id');
+        return $this->belongsTo(Models::classname(User::class), 'user_id');
     }
 
     /**

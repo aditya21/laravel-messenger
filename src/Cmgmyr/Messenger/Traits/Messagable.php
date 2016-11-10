@@ -51,20 +51,130 @@ trait Messagable
      */
     public function newThreadsCount()
     {
-        return $this->threadsWithNewMessages()->count();
+        return count($this->threadsWithNewMessages());
+    }
+
+    /**
+     * Returns the new messages count for user.
+     *
+     * @return int
+     */
+    public function newMessagesCount()
+    {
+        return count($this->threadsWithNewMessages());
     }
 
     /**
      * Returns all threads with new messages.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\belongsToMany
+     * @return array
      */
     public function threadsWithNewMessages()
     {
-        return $this->threads()
-            ->where(function ($q) {
-                $q->whereNull(Models::table('participants') . '.last_read');
-                $q->orWhere(Models::table('threads') . '.updated_at', '>', $this->getConnection()->raw(Models::table('participants') . '.last_read'));
-            })->get();
+        $threadsWithNewMessages = [];
+
+        $participants = Models::participant()->where('user_id', $this->id)->lists('last_read', 'thread_id');
+
+        /**
+         * @todo: see if we can fix this more in the future.
+         * Illuminate\Foundation is not available through composer, only in laravel/framework which
+         * I don't want to include as a dependency for this package...it's overkill. So let's
+         * exclude this check in the testing environment.
+         */
+        if (getenv('APP_ENV') == 'testing' || !str_contains(\Illuminate\Foundation\Application::VERSION, '5.0')) {
+            $participants = $participants->all();
+        }
+        if ($participants) {
+            $threads = Models::thread()->whereIn('id', array_keys($participants))->get();
+
+            foreach ($threads as $thread) {
+
+                if (!$participants[$thread->id]) {
+                    $threadsWithNewMessages[] = $thread->id;
+                }
+            }
+        }
+
+        return $threadsWithNewMessages;
+    }
+
+    /**
+     * Returns all threads with new messages.
+     *
+     * @return array
+     */
+    public function threadsWithNewMessagesAndUsers()
+    {
+        $threadsWithNewMessages = [];
+
+        $participants = Models::participant()->where('user_id', $this->id)->lists('last_read', 'thread_id');
+
+        /**
+         * @todo: see if we can fix this more in the future.
+         * Illuminate\Foundation is not available through composer, only in laravel/framework which
+         * I don't want to include as a dependency for this package...it's overkill. So let's
+         * exclude this check in the testing environment.
+         */
+        if (getenv('APP_ENV') == 'testing' || !str_contains(\Illuminate\Foundation\Application::VERSION, '5.0')) {
+            $participants = $participants->all();
+        }
+        if ($participants) {
+            $threads = Models::thread()->whereIn('id', array_keys($participants))->get();
+
+            foreach ($threads as $key => $thread) {
+
+                if (!$participants[$thread->id]) {
+                    $threadsWithNewMessages[$key]['thread_id'] = $thread->id;
+                    if (count($thread->messages)>0) {
+                        $threadsWithNewMessages[$key]['user_id'] = $thread->messages[0]->user_id;
+                        $threadsWithNewMessages[$key]['body'] = $thread->messages[0]->body;
+                    }else{
+                        $threadsWithNewMessages[$key]['user_id'] = Null;
+                    }
+                }
+            }
+        }
+
+        return $threadsWithNewMessages;
+    }
+
+    /**
+     * Returns all threads with new messages.
+     *
+     * @return array
+     */
+    public function threadsWithMessagesAndUsers()
+    {
+        $threadsWithNewMessages = [];
+
+        $participants = Models::participant()->where('user_id', $this->id)->lists('last_read', 'thread_id');
+
+        /**
+         * @todo: see if we can fix this more in the future.
+         * Illuminate\Foundation is not available through composer, only in laravel/framework which
+         * I don't want to include as a dependency for this package...it's overkill. So let's
+         * exclude this check in the testing environment.
+         */
+        if (getenv('APP_ENV') == 'testing' || !str_contains(\Illuminate\Foundation\Application::VERSION, '5.0')) {
+            $participants = $participants->all();
+        }
+        //dd($participants);
+        if ($participants) {
+            $threads = Models::thread()->whereIn('id', array_keys($participants))->get();
+
+            foreach ($threads as $key => $thread) {
+
+                    $threadsWithNewMessages[$key]['thread_id'] = $thread->id;
+                    
+                    if (count($thread->messages)>0) {
+                        $threadsWithNewMessages[$key]['user_id'] = $thread->messages[0]->user_id;
+                        $threadsWithNewMessages[$key]['body'] = $thread->messages[0]->body;
+                    }else{
+                        $threadsWithNewMessages[$key]['user_id'] = Null;
+                    }
+            }
+        }
+
+        return $threadsWithNewMessages;
     }
 }
