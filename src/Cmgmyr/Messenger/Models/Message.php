@@ -68,6 +68,16 @@ class Message extends Eloquent
     }
 
     /**
+     * User relationship.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function userDetail()
+    {
+        return $this->belongsTo(\App\Models\UserDetail::class, 'user_id','user_id');
+    }
+
+    /**
      * Participants relationship.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

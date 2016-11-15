@@ -58,6 +58,16 @@ class Thread extends Eloquent
     }
 
     /**
+     * Messages relationship.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function messageNotification()
+    {
+        return $this->hasOne(Models::classname(Message::class), 'thread_id', 'id');
+    }
+
+    /**
      * Returns the latest message from a thread.
      *
      * @return \Cmgmyr\Messenger\Models\Message
@@ -97,6 +107,11 @@ class Thread extends Eloquent
         return $this->belongsTo('App\Models\Group');
     }
 
+    public function userDetails()
+    {
+        return $this->belongsTo('App\Models\UserDetail','owner_id','user_id');
+    }
+
     /**
      * Returns the user object that created the thread.
      *
@@ -105,8 +120,8 @@ class Thread extends Eloquent
     public function creatorThread()
     {
         $creator = array();
-        $creator['id'] = $this->user['id'];
-        $creator['name'] = $this->user['first_name'].' '.$this->user['last_name'];
+        $creator['id'] = $this->userDetails['user_id'];
+        $creator['name'] = $this->userDetails['first_name'].' '.$this->userDetails['last_name'];
         return $creator;
     }
 
@@ -174,6 +189,48 @@ class Thread extends Eloquent
         return $query->join($participantsTable, $this->getQualifiedKeyName(), '=', $participantsTable . '.thread_id')
             ->where($participantsTable . '.user_id', $userId)
             ->where($participantsTable . '.deleted_at', null)
+            ->where(function($query) use($threadsTable)
+             {
+                $query->where($threadsTable.'.subject','<>','TeamInvite')
+                      ->where($threadsTable.'.subject','<>','Teamaccepted')
+                      ->where($threadsTable.'.subject','<>','Connect')
+                      ->where($threadsTable.'.subject','<>','Liked')
+                      ->where($threadsTable.'.subject','<>','Shared');
+             })                                           
+            ->select($threadsTable . '.*');
+    }
+
+    /**
+     * Returns threads that the user is associated with.
+     *
+     * @param $query
+     * @param $userId
+     *
+     * @return mixed
+     */
+    public function scopeForUserNotifications($query, $userId)
+    {
+        $participantsTable = Models::table('participants');
+        $threadsTable = Models::table('threads');   
+
+        return $query->join($participantsTable, $this->getQualifiedKeyName(), '=', $participantsTable . '.thread_id')
+                    ->join('messages',function($join)use($participantsTable){
+                        $join->on('messages.thread_id','=',$participantsTable . '.thread_id');
+                    })
+            ->where(function($query) use($threadsTable)
+            {
+                $query->orWhere($threadsTable.'.subject','TeamInvite')
+                      ->orWhere($threadsTable.'.subject','Teamaccepted')
+                      ->orWhere($threadsTable.'.subject','Connect')
+                      ->orWhere($threadsTable.'.subject','Liked')
+                      ->orWhere($threadsTable.'.subject','Shared')
+                      ->orWhere($threadsTable.'.subject','FeedCommented')
+                      ->orWhere($threadsTable.'.subject','GroupCommented')
+                      ->orWhere($threadsTable.'.subject','GroupInvited');
+            })
+            ->where($participantsTable . '.user_id', $userId)
+            ->where($participantsTable . '.deleted_at', null)
+            ->where('messages.user_id','<>',$userId)
             ->select($threadsTable . '.*');
     }
 
@@ -191,6 +248,14 @@ class Thread extends Eloquent
         $threadsTable = Models::table('threads');
 
         return $query->join($participantTable, $this->getQualifiedKeyName(), '=', $participantTable . '.thread_id')
+            ->where(function($query)
+             {
+                $query->where('threads'.'.subject','<>','TeamInvite')
+                      ->where('threads'.'.subject','<>','Teamaccepted')
+                      ->where('threads'.'.subject','<>','Connect')
+                      ->where('threads'.'.subject','<>','Liked')
+                      ->where('threads'.'.subject','<>','Shared');
+             })   
             ->where($participantTable . '.user_id', $userId)
             ->whereNull($participantTable . '.deleted_at')
             ->where(function ($query) use ($participantTable, $threadsTable) {
@@ -210,7 +275,15 @@ class Thread extends Eloquent
      */
     public function scopeBetween($query, array $participants)
     {
-        $query->whereHas('participants', function ($query) use ($participants) {
+        $query->where(function($query)
+             {
+                $query->where('threads'.'.subject','<>','TeamInvite')
+                      ->where('threads'.'.subject','<>','Teamaccepted')
+                      ->where('threads'.'.subject','<>','Connect')
+                      ->where('threads'.'.subject','<>','Liked')
+                      ->where('threads'.'.subject','<>','Shared');
+             })   
+        ->whereHas('participants', function ($query) use ($participants) {
             $query->whereIn('user_id', $participants)
                 ->groupBy('thread_id')
                 ->havingRaw('COUNT(thread_id)=' . count($participants));
@@ -427,6 +500,40 @@ class Thread extends Eloquent
                 'source' => 'subject'
             ]
         ];
+    }
+
+    /**
+     * Returns all threads with new messages.
+     *
+     * @return array
+     */
+    public static function unreadCount($threadIds)
+    {
+        $threadsWithNewMessages = [];
+
+        $participants = Models::participant()->where('user_id', \Auth::id())->lists('last_read', 'thread_id');
+
+        /**
+         * @todo: see if we can fix this more in the future.
+         * Illuminate\Foundation is not available through composer, only in laravel/framework which
+         * I don't want to include as a dependency for this package...it's overkill. So let's
+         * exclude this check in the testing environment.
+         */
+        if (getenv('APP_ENV') == 'testing' || !str_contains(\Illuminate\Foundation\Application::VERSION, '5.0')) {
+            $participants = $participants->all();
+        }
+        if ($participants) {
+            $threads = Models::thread()->whereIn('id', $threadIds)->get();
+
+            foreach ($threads as $thread) {
+
+                if (!$participants[$thread->id]) {
+                    $threadsWithNewMessages[] = $thread->id;
+                }
+            }
+        }
+
+        return count($threadsWithNewMessages);
     }
 
 }

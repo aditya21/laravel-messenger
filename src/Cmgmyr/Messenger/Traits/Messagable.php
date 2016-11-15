@@ -85,7 +85,16 @@ trait Messagable
             $participants = $participants->all();
         }
         if ($participants) {
-            $threads = Models::thread()->whereIn('id', array_keys($participants))->get();
+            $threads = Models::thread()->whereIn('id', array_keys($participants))
+                                       ->where(function($query)
+                                        {
+                                            $query->where('subject','<>','TeamInvite')
+                                                  ->where('subject','<>','Teamaccepted')
+                                                  ->where('subject','<>','Connect')
+                                                  ->where('subject','<>','Liked')
+                                                  ->where('subject','<>','Shared');
+                                        })                                     
+                                      ->get();
 
             foreach ($threads as $thread) {
 
@@ -119,7 +128,16 @@ trait Messagable
             $participants = $participants->all();
         }
         if ($participants) {
-            $threads = Models::thread()->whereIn('id', array_keys($participants))->get();
+            $threads = Models::thread()->whereIn('id', array_keys($participants))
+                                       ->where(function($query)
+                                        {
+                                            $query->where('subject','<>','TeamInvite')
+                                                  ->where('subject','<>','Teamaccepted')
+                                                  ->where('subject','<>','Connect')
+                                                  ->where('subject','<>','Liked')
+                                                  ->where('subject','<>','Shared');
+                                        })                               
+                                       ->get();
 
             foreach ($threads as $key => $thread) {
 
@@ -160,7 +178,16 @@ trait Messagable
         }
         //dd($participants);
         if ($participants) {
-            $threads = Models::thread()->whereIn('id', array_keys($participants))->get();
+            $threads = Models::thread()->whereIn('id', array_keys($participants))
+                                       ->where(function($query)
+                                        {
+                                            $query->where('subject','<>','TeamInvite')
+                                                  ->where('subject','<>','Teamaccepted')
+                                                  ->where('subject','<>','Connect')
+                                                  ->where('subject','<>','Liked')
+                                                  ->where('subject','<>','Shared');
+                                        })                               
+                                       ->get();
 
             foreach ($threads as $key => $thread) {
 
