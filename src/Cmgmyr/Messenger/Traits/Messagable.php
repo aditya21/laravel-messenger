@@ -92,7 +92,11 @@ trait Messagable
                                                   ->where('subject','<>','Teamaccepted')
                                                   ->where('subject','<>','Connect')
                                                   ->where('subject','<>','Liked')
-                                                  ->where('subject','<>','Shared');
+                                                  ->where('subject','<>','FeedCommented')
+                                                  ->where('subject','<>','GroupCommented')
+                                                  ->where('subject','<>','GroupInvited')
+                                                  ->where('subject','<>','Shared')
+                                                  ->where('subject','<>','requestAccepted');
                                         })                                     
                                       ->get();
 
@@ -135,7 +139,11 @@ trait Messagable
                                                   ->where('subject','<>','Teamaccepted')
                                                   ->where('subject','<>','Connect')
                                                   ->where('subject','<>','Liked')
-                                                  ->where('subject','<>','Shared');
+                                                  ->where('subject','<>','FeedCommented')
+                                                  ->where('subject','<>','GroupCommented')
+                                                  ->where('subject','<>','GroupInvited')
+                                                  ->where('subject','<>','Shared')
+                                                  ->where('subject','<>','requestAccepted');
                                         })                               
                                        ->get();
 
@@ -185,7 +193,11 @@ trait Messagable
                                                   ->where('subject','<>','Teamaccepted')
                                                   ->where('subject','<>','Connect')
                                                   ->where('subject','<>','Liked')
-                                                  ->where('subject','<>','Shared');
+                                                  ->where('subject','<>','FeedCommented')
+                                                  ->where('subject','<>','GroupCommented')
+                                                  ->where('subject','<>','GroupInvited')
+                                                  ->where('subject','<>','Shared')
+                                                  ->where('subject','<>','requestAccepted');
                                         })                               
                                        ->get();
 
