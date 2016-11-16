@@ -198,7 +198,8 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','FeedCommented')
                       ->where($threadsTable.'.subject','<>','GroupCommented')
                       ->where($threadsTable.'.subject','<>','GroupInvited')
-                      ->where($threadsTable.'.subject','<>','Shared');
+                      ->where($threadsTable.'.subject','<>','Shared')
+                      ->where($threadsTable.'.subject','<>','requestAccepted');
              })                                           
             ->select($threadsTable . '.*');
     }
@@ -231,7 +232,8 @@ class Thread extends Eloquent
                       ->orWhere($threadsTable.'.subject','Shared')
                       ->orWhere($threadsTable.'.subject','FeedCommented')
                       ->orWhere($threadsTable.'.subject','GroupCommented')
-                      ->orWhere($threadsTable.'.subject','GroupInvited');
+                      ->orWhere($threadsTable.'.subject','GroupInvited')
+                      ->orWhere($threadsTable.'.subject','requestAccepted');
             })
             ->where($participantsTable . '.user_id', $userId)
             ->where($participantsTable . '.deleted_at', null)
@@ -262,7 +264,8 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','FeedCommented')
                       ->where($threadsTable.'.subject','<>','GroupCommented')
                       ->where($threadsTable.'.subject','<>','GroupInvited')
-                      ->where($threadsTable.'.subject','<>','Shared');
+                      ->where($threadsTable.'.subject','<>','Shared')
+                      ->where($threadsTable.'.subject','<>','requestAccepted');
              })   
             ->where($participantTable . '.user_id', $userId)
             ->whereNull($participantTable . '.deleted_at')
@@ -292,7 +295,8 @@ class Thread extends Eloquent
                       ->where('threads.subject','<>','FeedCommented')
                       ->where('threads.subject','<>','GroupCommented')
                       ->where('threads.subject','<>','GroupInvited')
-                      ->where('threads.subject','<>','Shared');
+                      ->where('threads.subject','<>','Shared')
+                      ->where('threads.subject','<>','requestAccepted');
              })   
         ->whereHas('participants', function ($query) use ($participants) {
             $query->whereIn('user_id', $participants)
