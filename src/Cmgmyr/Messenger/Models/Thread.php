@@ -195,13 +195,16 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','Teamaccepted')
                       ->where($threadsTable.'.subject','<>','Connect')
                       ->where($threadsTable.'.subject','<>','Liked')
+                      ->where($threadsTable.'.subject','<>','FeedCommented')
+                      ->where($threadsTable.'.subject','<>','GroupCommented')
+                      ->where($threadsTable.'.subject','<>','GroupInvited')
                       ->where($threadsTable.'.subject','<>','Shared');
              })                                           
             ->select($threadsTable . '.*');
     }
 
     /**
-     * Returns threads that the user is associated with.
+     * Returns threads as notifications for the logged in user.
      *
      * @param $query
      * @param $userId
@@ -213,6 +216,8 @@ class Thread extends Eloquent
         $participantsTable = Models::table('participants');
         $threadsTable = Models::table('threads');   
 
+        //this query joins participants table with threads table and messages table with participants 
+        //and returns query builder with threads.
         return $query->join($participantsTable, $this->getQualifiedKeyName(), '=', $participantsTable . '.thread_id')
                     ->join('messages',function($join)use($participantsTable){
                         $join->on('messages.thread_id','=',$participantsTable . '.thread_id');
@@ -248,13 +253,16 @@ class Thread extends Eloquent
         $threadsTable = Models::table('threads');
 
         return $query->join($participantTable, $this->getQualifiedKeyName(), '=', $participantTable . '.thread_id')
-            ->where(function($query)
+            ->where(function($query) use($threadsTable)
              {
-                $query->where('threads'.'.subject','<>','TeamInvite')
-                      ->where('threads'.'.subject','<>','Teamaccepted')
-                      ->where('threads'.'.subject','<>','Connect')
-                      ->where('threads'.'.subject','<>','Liked')
-                      ->where('threads'.'.subject','<>','Shared');
+                $query->where($threadsTable.'.subject','<>','TeamInvite')
+                      ->where($threadsTable.'.subject','<>','Teamaccepted')
+                      ->where($threadsTable.'.subject','<>','Connect')
+                      ->where($threadsTable.'.subject','<>','Liked')
+                      ->where($threadsTable.'.subject','<>','FeedCommented')
+                      ->where($threadsTable.'.subject','<>','GroupCommented')
+                      ->where($threadsTable.'.subject','<>','GroupInvited')
+                      ->where($threadsTable.'.subject','<>','Shared');
              })   
             ->where($participantTable . '.user_id', $userId)
             ->whereNull($participantTable . '.deleted_at')
@@ -277,11 +285,14 @@ class Thread extends Eloquent
     {
         $query->where(function($query)
              {
-                $query->where('threads'.'.subject','<>','TeamInvite')
-                      ->where('threads'.'.subject','<>','Teamaccepted')
-                      ->where('threads'.'.subject','<>','Connect')
-                      ->where('threads'.'.subject','<>','Liked')
-                      ->where('threads'.'.subject','<>','Shared');
+                $query->where('threads.subject','<>','TeamInvite')
+                      ->where('threads.subject','<>','Teamaccepted')
+                      ->where('threads.subject','<>','Connect')
+                      ->where('threads.subject','<>','Liked')
+                      ->where('threads.subject','<>','FeedCommented')
+                      ->where('threads.subject','<>','GroupCommented')
+                      ->where('threads.subject','<>','GroupInvited')
+                      ->where('threads.subject','<>','Shared');
              })   
         ->whereHas('participants', function ($query) use ($participants) {
             $query->whereIn('user_id', $participants)
@@ -503,7 +514,7 @@ class Thread extends Eloquent
     }
 
     /**
-     * Returns all threads with new messages.
+     * This method brings the unread notifications of logged in user.
      *
      * @return array
      */
@@ -511,6 +522,7 @@ class Thread extends Eloquent
     {
         $threadsWithNewMessages = [];
 
+        //get all participants for the logged in user.
         $participants = Models::participant()->where('user_id', \Auth::id())->lists('last_read', 'thread_id');
 
         /**
@@ -522,11 +534,14 @@ class Thread extends Eloquent
         if (getenv('APP_ENV') == 'testing' || !str_contains(\Illuminate\Foundation\Application::VERSION, '5.0')) {
             $participants = $participants->all();
         }
+
+        // if there are participants, then get all threads for those participants.
         if ($participants) {
             $threads = Models::thread()->whereIn('id', $threadIds)->get();
 
             foreach ($threads as $thread) {
 
+                //if last_read is not set then add it to unread array.
                 if (!$participants[$thread->id]) {
                     $threadsWithNewMessages[] = $thread->id;
                 }

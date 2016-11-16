@@ -2,7 +2,7 @@
 
 namespace Cmgmyr\Messenger\Models;
 
-use App\User;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 
 class Message extends Eloquent
