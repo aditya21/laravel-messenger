@@ -185,6 +185,8 @@ trait Messagable
             $participants = $participants->all();
         }
         //dd($participants);
+
+        //added new conditions
         if ($participants) {
             $threads = Models::thread()->whereIn('id', array_keys($participants))
                                        ->where(function($query)

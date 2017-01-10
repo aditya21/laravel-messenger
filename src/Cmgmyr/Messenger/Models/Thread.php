@@ -189,6 +189,7 @@ class Thread extends Eloquent
         return $query->join($participantsTable, $this->getQualifiedKeyName(), '=', $participantsTable . '.thread_id')
             ->where($participantsTable . '.user_id', $userId)
             ->where($participantsTable . '.deleted_at', null)
+            ->whereNull($participantsTable.'.group_id')
             ->where(function($query) use($threadsTable)
              {
                 $query->where($threadsTable.'.subject','<>','TeamInvite')
@@ -198,7 +199,8 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','FeedCommented')
                       ->where($threadsTable.'.subject','<>','GroupCommented')
                       ->where($threadsTable.'.subject','<>','GroupInvited')
-                      ->where($threadsTable.'.subject','<>','Shared');
+                      ->where($threadsTable.'.subject','<>','Shared')
+                      ->where($threadsTable.'.subject','<>','requestAccepted');
              })                                           
             ->select($threadsTable . '.*');
     }
@@ -231,7 +233,8 @@ class Thread extends Eloquent
                       ->orWhere($threadsTable.'.subject','Shared')
                       ->orWhere($threadsTable.'.subject','FeedCommented')
                       ->orWhere($threadsTable.'.subject','GroupCommented')
-                      ->orWhere($threadsTable.'.subject','GroupInvited');
+                      ->orWhere($threadsTable.'.subject','GroupInvited')
+                      ->orWhere($threadsTable.'.subject','requestAccepted');
             })
             ->where($participantsTable . '.user_id', $userId)
             ->where($participantsTable . '.deleted_at', null)
@@ -262,7 +265,8 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','FeedCommented')
                       ->where($threadsTable.'.subject','<>','GroupCommented')
                       ->where($threadsTable.'.subject','<>','GroupInvited')
-                      ->where($threadsTable.'.subject','<>','Shared');
+                      ->where($threadsTable.'.subject','<>','Shared')
+                      ->where($threadsTable.'.subject','<>','requestAccepted');
              })   
             ->where($participantTable . '.user_id', $userId)
             ->whereNull($participantTable . '.deleted_at')
@@ -283,22 +287,24 @@ class Thread extends Eloquent
      */
     public function scopeBetween($query, array $participants)
     {
-        $query->where(function($query)
-             {
-                $query->where('threads.subject','<>','TeamInvite')
-                      ->where('threads.subject','<>','Teamaccepted')
-                      ->where('threads.subject','<>','Connect')
-                      ->where('threads.subject','<>','Liked')
-                      ->where('threads.subject','<>','FeedCommented')
-                      ->where('threads.subject','<>','GroupCommented')
-                      ->where('threads.subject','<>','GroupInvited')
-                      ->where('threads.subject','<>','Shared');
-             })   
-        ->whereHas('participants', function ($query) use ($participants) {
-            $query->whereIn('user_id', $participants)
-                ->groupBy('thread_id')
-                ->havingRaw('COUNT(thread_id)=' . count($participants));
-        });
+        $query->whereNull('threads.group_id')
+             ->where(function($query)
+               {
+                    $query->where('threads.subject','<>','TeamInvite')
+                          ->where('threads.subject','<>','Teamaccepted')
+                          ->where('threads.subject','<>','Connect')
+                          ->where('threads.subject','<>','Liked')
+                          ->where('threads.subject','<>','FeedCommented')
+                          ->where('threads.subject','<>','GroupCommented')
+                          ->where('threads.subject','<>','GroupInvited')
+                          ->where('threads.subject','<>','Shared')
+                          ->where('threads.subject','<>','requestAccepted');
+                })   
+            ->whereHas('participants', function ($query) use ($participants) {
+                $query->whereIn('user_id', $participants)
+                    ->groupBy('thread_id')
+                    ->havingRaw('COUNT(thread_id)=' . count($participants));
+            });
     }
 
     /**
