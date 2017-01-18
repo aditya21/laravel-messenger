@@ -200,6 +200,7 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','GroupCommented')
                       ->where($threadsTable.'.subject','<>','GroupInvited')
                       ->where($threadsTable.'.subject','<>','Shared')
+                      ->where($threadsTable.'.subject','<>','EnterprisePlan')
                       ->where($threadsTable.'.subject','<>','requestAccepted');
              })                                           
             ->select($threadsTable . '.*');
@@ -234,6 +235,7 @@ class Thread extends Eloquent
                       ->orWhere($threadsTable.'.subject','FeedCommented')
                       ->orWhere($threadsTable.'.subject','GroupCommented')
                       ->orWhere($threadsTable.'.subject','GroupInvited')
+                      ->orWhere($threadsTable.'.subject','EnterprisePlan')
                       ->orWhere($threadsTable.'.subject','requestAccepted');
             })
             ->where($participantsTable . '.user_id', $userId)
@@ -266,6 +268,7 @@ class Thread extends Eloquent
                       ->where($threadsTable.'.subject','<>','GroupCommented')
                       ->where($threadsTable.'.subject','<>','GroupInvited')
                       ->where($threadsTable.'.subject','<>','Shared')
+                      ->where($threadsTable.'.subject','<>','EnterprisePlan')
                       ->where($threadsTable.'.subject','<>','requestAccepted');
              })   
             ->where($participantTable . '.user_id', $userId)
@@ -298,6 +301,7 @@ class Thread extends Eloquent
                           ->where('threads.subject','<>','GroupCommented')
                           ->where('threads.subject','<>','GroupInvited')
                           ->where('threads.subject','<>','Shared')
+                          ->where('threads.subject','<>','EnterprisePlan')
                           ->where('threads.subject','<>','requestAccepted');
                 })   
             ->whereHas('participants', function ($query) use ($participants) {
